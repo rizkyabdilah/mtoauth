@@ -3,6 +3,7 @@ MTOAuth
 
 PHP Wrapper for MindTalk API
 
+Create Apps: https://auth.mindtalk.com/ui/client/create
 MindTalk Wiki: http://developer.digaku.com/
 
 How To Use
