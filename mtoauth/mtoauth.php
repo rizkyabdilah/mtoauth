@@ -175,8 +175,10 @@ class MTOauth{
             'client_secret' => $this->client_secret,
             'redirect_uri' => $this->redirect_uri
         );
-        // todo finish this
-        return $new_access_token;
+        $conn = new Http('GET', $this->refreshTokenURL(), $data);
+        $response = $conn->execute();
+        $new_token = Http::parseQS($response);
+        return $new_token;
     }
     
     function setToken($access_token, $refresh_token){
