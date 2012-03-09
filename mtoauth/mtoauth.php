@@ -15,12 +15,12 @@ class Http{
     public $http_code;
     public $http_info;
     public $url;
-    public $data;
+    public $param;
     public $header;
     
-    function __construct($method, $url, $data = array(), $header = array()){
+    function __construct($method, $url, $param = array(), $header = array()){
         $this->url = $url;
-        $this->data = $data;
+        $this->param = $param;
         $this->header = $header;
         $this->method = strtoupper($method);
         return $this;
@@ -47,11 +47,11 @@ class Http{
                                                          $this->header));
     
         if ($this->method == 'GET'){
-            $this->url .= '?' . http_build_query($this->data);
+            $this->url .= '?' . http_build_query($this->param);
         } else {
             curl_setopt($ch, CURLOPT_POST, true);
-            if (count($this->data)) {
-                 curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($this->data));
+            if (count($this->param)) {
+                curl_setopt($ch, CURLOPT_POSTFIELDS, $this->param);
             }
         }
     
@@ -76,12 +76,16 @@ class MTAPI{
         $this->access_token = $access_token;
         $this->refresh_token = $refresh_token;
     }
+    
+    function getApiHost($path = ''){
+        return $this->api_host . $path;
+    }
 }
 
 class MTUser extends MTAPI{
     
     function info($name){
-        $conn = new Http('GET', $this->api_host . '/user/info', array('name' => $name, 'rf' => $this->rf)); 
+        $conn = new Http('GET', $this->getApiHost('/user/info'), array('name' => $name, 'rf' => $this->rf)); 
         return $conn->execute();
     }
     
@@ -90,7 +94,7 @@ class MTUser extends MTAPI{
 class MTMy extends MTAPI{
     
     function info(){
-        $conn = new Http('GET', $this->api_host . '/my/info', array('access_token' => $this->access_token, 'rf' => $this->rf)); 
+        $conn = new Http('GET', $this->getApiHost('/my/info'), array('access_token' => $this->access_token, 'rf' => $this->rf)); 
         return $conn->execute();
     }
     
@@ -99,15 +103,25 @@ class MTMy extends MTAPI{
 
 class MTPost extends MTAPI{
     
-    function write_mind($message, $origin_id){
-        $data = array(
+    function write_mind($message, $origin_id, $attach_pic=false, $autopost_fb=0, $autopost_tw=0){
+        
+        $params = array(
             'message' => $message,
             'origin_id' => $origin_id,
+            'autopost_fb' => $autopost_fb,
+            'autopost_tw' => $autopost_tw,
             'access_token' => $this->access_token,
             'rf' => $this->rf
         );
         
-        $conn = new Http('POST', $this->api_host . '/post/write_mind', $data); 
+        if ($attach_pic){
+            if (!StringUtils::startsWith($attach_pic, '@')){
+                $attach_pic = sprintf('%s%s', '@', $attach_pic);
+            }
+            $params['attach_pic'] = $attach_pic;
+        }
+        
+        $conn = new Http('POST', $this->getApiHost('/post/write_mind'), $params); 
         return $conn->execute();
     }
 }

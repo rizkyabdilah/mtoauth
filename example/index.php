@@ -36,9 +36,12 @@ $user = $result->result;
             
         </p>
         <p>
-            <form action="action.php" method="post">
+            <form action="action.php" method="post" enctype="multipart/form-data">
                 <label>Text</label>
                 <textarea name="message"></textarea>
+                <label>Picture</label>
+                <input type="file" name="attach_pic" />
+                
                 <input type="hidden" name="action" value="post_stream" />
                 <input type="hidden" name="origin_id" value="<?php echo $user->id; ?>" />
                 <input type="submit" value="Send" />
