@@ -10,8 +10,20 @@ $access_token = $_SESSION['access_token'];
 $refresh_token = $_SESSION['refresh_token'];
 $mtoauth->setToken($access_token, $refresh_token);
 
-$result = json_decode($mtoauth->my->info());
+$exec = $mtoauth->my->info();
+if ($exec->http_code != '200'){
+    exit('error mindtalk API response :' . $exec->http_info);
+}
+$result = json_decode($exec->response);
 $user = $result->result;
+
+$exec = $mtoauth->user->stream($user->name);
+if ($exec->http_code != '200'){
+    exit('error mindtalk API response :' . $exec->http_info);
+}
+$result = json_decode($exec->response);
+$streams = $result->result->posts;
+
 ?>
 <html>
     <head>
@@ -47,6 +59,16 @@ $user = $result->result;
                 <input type="submit" value="Send" />
             </form>
         </p>
+        <h3>Your stream</h3>
+        <ul>
+            <?php
+            foreach ($streams as $i => $val){
+            ?>
+                <li><?php echo $val->message; ?></li>
+            <?php
+            }
+            ?>
+        </ul>
         <p><a href="logout.php">Logout</a>
     </body>
 </html>

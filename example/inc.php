@@ -10,8 +10,7 @@ $config = array();
 $config['client_id'] = 'YOUR-CLIENT-ID';
 $config['client_secret'] = 'YOUR-CLIENT-SECRET';
 $config['redirect_uri'] = 'YOUR-CALLBACK-URL';
+$config['api_key'] = 'YOUR-API-KEY';
 
-
-$mtoauth = new MTOauth($config['client_id'],
-                           $config['client_secret'],
-                           $config['redirect_uri']);
+$mtoauth = new MTOauth($config['client_id'], $config['client_secret'],
+                        $config['redirect_uri'], $config['api_key']);

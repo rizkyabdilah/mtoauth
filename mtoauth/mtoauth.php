@@ -12,11 +12,14 @@ class Http{
     
     private $useragent = 'cURL MTOAuth 1.0';
     private $default_header = array('Expect:', 'Pragma: no-cache');
-    public $http_code;
-    public $http_info;
+    private $timeout = 5;
+    private $connect_timeout = 1;
     public $url;
     public $param;
     public $header;
+    public $http_code;
+    public $http_info;
+    public $response;
     
     function __construct($method, $url, $param = array(), $header = array()){
         $this->url = $url;
@@ -42,7 +45,7 @@ class Http{
         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
         curl_setopt($ch, CURLOPT_TIMEOUT, $this->timeout);
         curl_setopt($ch, CURLOPT_USERAGENT, $this->useragent);
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, $this->connecttimeout);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, $this->connect_timeout);
         curl_setopt($ch, CURLOPT_HTTPHEADER, array_merge($this->default_header,
                                                          $this->header));
     
@@ -56,23 +59,25 @@ class Http{
         }
     
         curl_setopt($ch, CURLOPT_URL, $this->url);
-        $response = curl_exec($ch);
+        $this->response = curl_exec($ch);
         $this->http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $this->http_info = curl_getinfo($ch);
         curl_close ($ch);
         
-        return $response;
+        return $this;
     }
 }
 
 class MTAPI{
     public $api_host = 'http://api.mindtalk.com/v1';
     public $rf = 'json';
+    public $api_key;
     
     protected $access_token;
     protected $refresh_token;
     
-    function __construct($access_token, $refresh_token){
+    function __construct($api_key, $access_token, $refresh_token){
+        $this->api_key = $api_key;
         $this->access_token = $access_token;
         $this->refresh_token = $refresh_token;
     }
@@ -80,12 +85,82 @@ class MTAPI{
     function getApiHost($path = ''){
         return $this->api_host . $path;
     }
+    
+    function getRequest($endpoint, $params=array()){
+        $params['rf'] = $this->rf;
+        $req = new Http('GET', $this->getApiHost($endpoint), $params);
+        return $req;
+    }
+    
+    function postRequest($endpoint, $params=array()){
+        $params['rf'] = $this->rf;
+        $req = new Http('POST', $this->getApiHost($endpoint), $params);
+        return $req;
+    }
+    
+    // todo add method for set return format
 }
 
 class MTUser extends MTAPI{
     
     function info($name){
-        $conn = new Http('GET', $this->getApiHost('/user/info'), array('name' => $name, 'rf' => $this->rf)); 
+        $conn = $this->getRequest('/user/info', array('name' => $name));
+        return $conn->execute();
+    }
+    
+    function supporters(){
+        $params = array('name' => $name, 'api_key' => $this->api_key,
+                        'limit' => $limit, 'offset' => $offset);
+        $conn = $this->getRequest('/user/supporters', $params);
+        return $conn->execute();
+    }
+    
+    function supporting($name, $limit=10, $offset=0){
+        $params = array('name' => $name, 'api_key' => $this->api_key,
+                        'limit' => $limit, 'offset' => $offset);
+        $conn = $this->getRequest('/user/supporting', $params);
+        return $conn->execute();
+    }
+    
+    function search($q=array()){
+        $params = array('api_key' => $this->api_key, 'limit' => $limit,
+                        'offset' => $offset);
+        $params = array_merge($params, $q);
+        $conn = $this->getRequest('/user/search', $params);
+        return $conn->execute();
+    }
+    
+    function channels($name, $limit=10, $offset=0){
+        $params = array('name' => $name, 'api_key' => $this->api_key,
+                        'limit' => $limit, 'offset' => $offset);
+        $conn = $this->getRequest('/user/channels', $params);
+        return $conn->execute();
+    }
+    
+    function newest($limit=10, $offset=0){
+        $params = array('api_key' => $this->api_key, 'limit' => $limit,
+                        'offset' => $offset);
+        $conn = $this->getRequest('/user/newest', $params);
+        return $conn->execute();
+    }
+    
+    function is_support($s_user_id, $t_user_id){
+        $params = array('api_key' => $this->api_key, 's_user_id' => $s_user_id,
+                        't_user_id' => $t_user_id);
+        $conn = $this->getRequest('/user/is_support', $params);
+        return $conn->execute();
+    }
+    
+    function trophies($name){
+        $params = array('api_key' => $this->api_key, 'name' => $name);
+        $conn = $this->getRequest('/user/trophies', $params);
+        return $conn->execute();
+    }
+    
+    function stream($name, $limit=10, $opt=array()){
+        $params = array('api_key' => $this->api_key, 'name' => $name, 'limit' => $limit);
+        $params = array_merge($params, $opt);
+        $conn = $this->getRequest('/user/stream', $params);
         return $conn->execute();
     }
     
@@ -134,16 +209,18 @@ class MTOauth{
     private $client_id;
     private $client_secret;
     private $redirect_uri;
+    private $api_key;
     
     // wrapper function
     public $user;
     public $my;
     public $post;
     
-    function __construct($client_id, $client_secret, $redirect_uri){
+    function __construct($client_id, $client_secret, $redirect_uri, $api_key){
         $this->client_id = $client_id;
         $this->client_secret = $client_secret;
         $this->redirect_uri = $redirect_uri;
+        $this->api_key = $api_key;
     }
     
     function authorizeURL(){
@@ -177,8 +254,8 @@ class MTOauth{
             'redirect_uri' => $this->redirect_uri
         );
         $conn = new Http('GET', $this->accessTokenURL(), $data);
-        $response = $conn->execute();
-        $token = Http::parseQS($response);
+        $exec = $conn->execute();
+        $token = Http::parseQS($exec->response);
         return $token;
     }
     
@@ -190,15 +267,15 @@ class MTOauth{
             'redirect_uri' => $this->redirect_uri
         );
         $conn = new Http('GET', $this->refreshTokenURL(), $data);
-        $response = $conn->execute();
-        $new_token = Http::parseQS($response);
+        $exec = $conn->execute();
+        $new_token = Http::parseQS($exec->response);
         return $new_token;
     }
     
     function setToken($access_token, $refresh_token){
-        $this->user = new MTUser($access_token, $refresh_token);
-        $this->my = new MTMy($access_token, $refresh_token);
-        $this->post = new MTPost($access_token, $refresh_token);
+        $this->user = new MTUser($this->api_key, $access_token, $refresh_token);
+        $this->my = new MTMy($this->api_key, $access_token, $refresh_token);
+        $this->post = new MTPost($this->api_key, $access_token, $refresh_token);
     }
     
 }

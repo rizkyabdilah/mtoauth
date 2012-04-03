@@ -11,7 +11,7 @@ if ($_POST['action'] == 'post_stream'){
     
     // attach picture if user upload a file, reject if not an image
     $upload_file = false;
-    if ($_FILES){
+    if (isset($_FILES['attach_pic']) && !empty($_FILES['attach_pic']['name'])){
         if (substr($_FILES['attach_pic']['type'], 0, 5) != 'image'){
             exit('file type not allowed!!');
         }
@@ -22,10 +22,9 @@ if ($_POST['action'] == 'post_stream'){
         }
     }
     
-    $response = $mtoauth->post->write_mind($message, $origin_id, $upload_file);
-    $response = json_decode($response);
+    $exec = $mtoauth->post->write_mind($message, $origin_id, $upload_file);
+    $response = json_decode($exec->response);
     $post = $response->result;
-    
     // delete file after upload
     if ($upload_file){
         unlink($upload_file);
