@@ -76,6 +76,8 @@ class MTAPI{
     protected $access_token;
     protected $refresh_token;
     
+    public $authentic = false;
+    
     function __construct($api_key, $access_token, $refresh_token){
         $this->api_key = $api_key;
         $this->access_token = $access_token;
@@ -86,14 +88,20 @@ class MTAPI{
         return $this->api_host . $path;
     }
     
-    function getRequest($endpoint, $params=array()){
+    function getRequest($endpoint, $params=array(), $authentic=false){
         $params['rf'] = $this->rf;
+        if ($this->authentic || $authentic)
+            $params['access_token'] = $this->access_token;
         $req = new Http('GET', $this->getApiHost($endpoint), $params);
         return $req;
     }
     
-    function postRequest($endpoint, $params=array()){
+    function postRequest($endpoint, $params=array(), $authentic=false){
         $params['rf'] = $this->rf;
+        if ($this->authentic || $authentic)
+            $params['access_token'] = $this->access_token;
+        else
+            $params['api_key'] = $this->api_key;
         $req = new Http('POST', $this->getApiHost($endpoint), $params);
         return $req;
     }
@@ -108,72 +116,124 @@ class MTUser extends MTAPI{
         return $conn->execute();
     }
     
-    function supporters(){
-        $params = array('name' => $name, 'api_key' => $this->api_key,
-                        'limit' => $limit, 'offset' => $offset);
+    function supporters($name, $params=array()){
+        $params['name'] = $name;
         $conn = $this->getRequest('/user/supporters', $params);
         return $conn->execute();
     }
     
-    function supporting($name, $limit=10, $offset=0){
-        $params = array('name' => $name, 'api_key' => $this->api_key,
-                        'limit' => $limit, 'offset' => $offset);
+    function supporting($name, $params=array()){
+        $params['name'] = $name;
         $conn = $this->getRequest('/user/supporting', $params);
         return $conn->execute();
     }
     
-    function search($q=array()){
-        $params = array('api_key' => $this->api_key, 'limit' => $limit,
-                        'offset' => $offset);
-        $params = array_merge($params, $q);
-        $conn = $this->getRequest('/user/search', $params);
+    function search($query=array()){
+        $conn = $this->getRequest('/user/search', $query);
         return $conn->execute();
     }
     
-    function channels($name, $limit=10, $offset=0){
-        $params = array('name' => $name, 'api_key' => $this->api_key,
-                        'limit' => $limit, 'offset' => $offset);
+    function channels($name, $params=array()){
+        $params['name'] = $name;
         $conn = $this->getRequest('/user/channels', $params);
         return $conn->execute();
     }
     
-    function newest($limit=10, $offset=0){
-        $params = array('api_key' => $this->api_key, 'limit' => $limit,
-                        'offset' => $offset);
+    function newest($params=array()){
         $conn = $this->getRequest('/user/newest', $params);
         return $conn->execute();
     }
     
     function is_support($s_user_id, $t_user_id){
-        $params = array('api_key' => $this->api_key, 's_user_id' => $s_user_id,
-                        't_user_id' => $t_user_id);
+        $params = array('s_user_id' => $s_user_id, 't_user_id' => $t_user_id);
         $conn = $this->getRequest('/user/is_support', $params);
         return $conn->execute();
     }
     
     function trophies($name){
-        $params = array('api_key' => $this->api_key, 'name' => $name);
-        $conn = $this->getRequest('/user/trophies', $params);
+        $conn = $this->getRequest('/user/trophies', array('name' => $name));
         return $conn->execute();
     }
     
-    function stream($name, $limit=10, $opt=array()){
-        $params = array('api_key' => $this->api_key, 'name' => $name, 'limit' => $limit);
-        $params = array_merge($params, $opt);
+    function stream($name, $params=array()){
+        $params['name'] = $name;
         $conn = $this->getRequest('/user/stream', $params);
+        return $conn->execute();
+    }
+    
+    function update_profile($params=array()){
+        $conn = $this->postRequest('/user/update_profile', $params, true);
+        return $conn->execute();
+    }
+    
+    function support($uidname){
+        $params = array('uidname' => $uidname);
+        $conn = $this->postRequest('/user/support', $params, true);
+        return $conn->execute();
+    }
+    
+    function unsupport($uidname){
+        $params = array('uidname' => $uidname);
+        $conn = $this->postRequest('/user/unsupport', $params, true);
         return $conn->execute();
     }
     
 }
 
+class MYIam extends MTAPI{
+    
+    function __construct($api_key, $access_token, $refresh_token){
+        parent::__construct($api_key, $access_token, $refresh_token);
+        $this->authentic = true;
+    }
+    
+    function supporting($params=array()){
+        $conn = $this->getRequest('/my/supporting', $params);
+        return $conn->execute();
+    }
+}
+
 class MTMy extends MTAPI{
     
+    function __construct($api_key, $access_token, $refresh_token){
+        parent::__construct($api_key, $access_token, $refresh_token);
+        $this->authentic = true;
+    }
+    
     function info(){
-        $conn = new Http('GET', $this->getApiHost('/my/info'), array('access_token' => $this->access_token, 'rf' => $this->rf)); 
+        $conn = $this->postRequest('/my/info'); 
         return $conn->execute();
     }
     
-    // todo add wrapper for class authentic, anon api
+    function supporter($params=array()){
+        $conn = $this->getRequest('/my/supporter', $params);
+        return $conn->execute();
+    }
+    
+    function stream($params=array()){
+        $conn = $this->getRequest('/my/stream', $params);
+        return $conn->execute();
+    }
+    
+    function email(){
+        $conn = $this->getRequest('/my/email');
+        return $conn->execute();
+    }
+    
+    function birth_date(){
+        $conn = $this->getRequest('/my/birth_date');
+        return $conn->execute();
+    }
+    
+    function channels($params=array()){
+        $conn = $this->getRequest('/my/info', $params);
+        return $conn->execute();
+    }
+    
+    function notifications($params=array()){
+        $conn = $this->getRequest('/my/notifications', $params);
+        return $conn->execute();
+    }
 }
 
 class MTPost extends MTAPI{

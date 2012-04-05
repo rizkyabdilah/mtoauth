@@ -10,6 +10,7 @@ $access_token = $_SESSION['access_token'];
 $refresh_token = $_SESSION['refresh_token'];
 $mtoauth->setToken($access_token, $refresh_token);
 
+// get current user info
 $exec = $mtoauth->my->info();
 if ($exec->http_code != '200'){
     exit('error mindtalk API response :' . $exec->http_info);
@@ -17,6 +18,14 @@ if ($exec->http_code != '200'){
 $result = json_decode($exec->response);
 $user = $result->result;
 
+// get home stream timeline
+$exec = $mtoauth->my->stream();
+if ($exec->http_code != '200'){
+    exit('error mindtalk API response :' . $exec->http_info);
+}
+$result = json_decode($exec->response);
+$home_streams = $result->result->posts;
+// get user stream
 $exec = $mtoauth->user->stream($user->name);
 if ($exec->http_code != '200'){
     exit('error mindtalk API response :' . $exec->http_info);
@@ -24,10 +33,19 @@ if ($exec->http_code != '200'){
 $result = json_decode($exec->response);
 $streams = $result->result->posts;
 
+// get user supporter, limit 20
+$exec = $mtoauth->my->supporter(array('limit' => 20));
+if ($exec->http_code != '200'){
+    print_r($exec);
+    exit('error mindtalk API response :' . $exec->http_info);
+}
+$result = json_decode($exec->response);
+$supporters = $result->result;
 ?>
 <html>
     <head>
-        <title>MindTalk Test Client - <?php echo $user->name; ?><</title>
+        <title>MindTalk Test Client - <?php echo $user->name; ?></title>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" /> 
         <style type="text/css">
         label{
             display: block;
@@ -59,12 +77,56 @@ $streams = $result->result->posts;
                 <input type="submit" value="Send" />
             </form>
         </p>
+        <h3>Your home stream timeline</h3>
+        <ul>
+            <?php
+            foreach ($home_streams as $i => $val){
+            ?>
+                <li>
+                    <?php echo $val->message; ?><br />
+                    <?php
+                    foreach ($val->attachments as $j => $valx){
+                        if ($valx->kind == 'EmbedPic')
+                            print '<img src="' . $valx->medium . '" alt="' . $valx->medium . '" />';
+                        elseif ($valx->kind == 'EmbedVideoLink')
+                            print $valx->html;
+                        else
+                            print $valx->url;
+                    }
+                    ?>
+                </li>
+            <?php
+            }
+            ?>
+        </ul>
         <h3>Your stream</h3>
         <ul>
             <?php
             foreach ($streams as $i => $val){
             ?>
-                <li><?php echo $val->message; ?></li>
+                <li>
+                    <?php echo $val->message; ?><br />
+                    <?php
+                    foreach ($val->attachments as $j => $valx){
+                        if ($valx->kind == 'EmbedPic')
+                            print '<img src="' . $valx->medium . '" alt="' . $valx->medium . '" />';
+                        elseif ($valx->kind == 'EmbedVideoLink')
+                            print $valx->html;
+                        else
+                            print $valx->url;
+                    }
+                    ?>
+                </li>
+            <?php
+            }
+            ?>
+        </ul>
+        <h3>Your supporter</h3>
+        <ul>
+            <?php
+            foreach ($supporters as $i => $val){
+            ?>
+                <li><?php echo $val->name; ?></li>
             <?php
             }
             ?>
