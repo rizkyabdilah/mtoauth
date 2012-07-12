@@ -270,17 +270,19 @@ class MTOauth{
     private $client_secret;
     private $redirect_uri;
     private $api_key;
+    private $scopes;
     
     // wrapper function
     public $user;
     public $my;
     public $post;
     
-    function __construct($client_id, $client_secret, $redirect_uri, $api_key){
+    function __construct($client_id, $client_secret, $redirect_uri, $api_key, $scopes=null){
         $this->client_id = $client_id;
         $this->client_secret = $client_secret;
         $this->redirect_uri = $redirect_uri;
         $this->api_key = $api_key;
+        $this->scopes = $scopes;
     }
     
     function authorizeURL(){
@@ -301,6 +303,10 @@ class MTOauth{
             'client_id' => $this->client_id,
             'redirect_uri' => $this->redirect_uri
         );
+
+        if (!is_null($this->scopes)){
+            $qs['scopes'] = $this->scopes;
+        }
         
         $auth_url = $this->authorizeURL() . '?' . http_build_query($qs);
         
